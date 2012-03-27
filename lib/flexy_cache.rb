@@ -6,8 +6,7 @@ module FlexyCache
 
   DEFAULT_OPTIONS = {
     :expired_on          => Proc.new { |object| Time.now + 2.weeks },    # When successfully cached data will be tried to refresh.
-    :retry_in            => Proc.new { |object| Time.now + 2.hours },    # When unsuccessfully refreshed data will be tried to refresh again.
-    :storage             => $flexy_key_value_storage
+    :retry_in            => Proc.new { |object| Time.now + 2.hours }     # When unsuccessfully refreshed data will be tried to refresh again.
   }
 
   included do
