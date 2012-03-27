@@ -1,7 +1,13 @@
 require 'json'
 
 module FlexyCache
-  module Storage
+  class Storage
+    attr_accessor :redis
+
+    def initialize(redis)
+      @redis = redis
+    end
+
     # Stores value in key values store.
     #
     # @param [String]   key       Key for stored value.
@@ -10,10 +16,11 @@ module FlexyCache
     #
     # @return [String]  stored_value.
     def store_value(key, value, expire_on)
-      $flexy_cache_redis.set key, {
-                                    :expire_on => expire_on,
-                                    :value     => value
-                                  }
+      set key, {
+                 "expire_on" => expire_on,
+                 "value"     => value
+               }
+      value
     end
 
     # Updates expiration time for stored value.
@@ -23,11 +30,12 @@ module FlexyCache
     #
     # @return [DateTime] Stored value of expire_on.
     def update_value_expiration(key, expire_on)
-      val = $flexy_cache_redis.get(key)
+      val = get(key)
       if val
-        val[:expire_on] = expire_on
-        $flexy_cache_redis.set(key, val)
+        val["expire_on"] = expire_on
+        set key, val
       end
+      expire_on
     end
 
     # Retrieves stored_value.
@@ -36,8 +44,8 @@ module FlexyCache
     #
     # @return [Array<String, DateTine>]  stored_value and expiretion_time.
     def get_value(key)
-      val = $flexy_cache_redis.get(key)
-      [val[:value], val[:expire_on]] if val
+      val = get(key)
+      [val["value"], val["expire_on"]] if val
     end
 
     # Returns true if value is stored, otherwise returns false.
@@ -46,7 +54,20 @@ module FlexyCache
     #
     # @return [true, false]
     def value_stored?(key)
-      !!$flexy_cache_redis.get(key)
+      !!get(key)
+    end
+
+    def get(key)
+      value = @redis.get(key)
+      if value
+        value = JSON.parse(value)
+        value['expire_on'] = DateTime.parse value['expire_on']
+      end
+      value
+    end
+
+    def set(key, value)
+      @redis.set key, JSON.dump(value)
     end
   end
 end

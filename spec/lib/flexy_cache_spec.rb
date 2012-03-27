@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe FlexyCache do
   before :each do
-    $flexy_storage = FlexyCache::MemoryStorage.new
+    $flexy_storage = FlexyCache::Storage.new(Redis.new)
   end
 
   describe "flexy_cache" do
@@ -21,12 +21,12 @@ describe FlexyCache do
 
     it "stores values in cache using correct key" do
       Timecop.freeze(datetime) do
-        $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.1"][:value].should be == 10.0
-        $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.1"][:expire_on].should be == Time.parse("2012-04-03 16:05")
+        $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.1")['value'].should be == 10.0
+        $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.1")['expire_on'].should be == Time.parse("2012-04-03 16:05")
 
 
-        $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.2"][:value].should be == 20.0
-        $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.2"][:expire_on].should be == Time.parse("2012-04-03 16:05")
+        $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.2")['value'].should be == 20.0
+        $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.2")['expire_on'].should be == Time.parse("2012-04-03 16:05")
       end
     end
 
@@ -50,16 +50,16 @@ describe FlexyCache do
         Timecop.return
       end
 
-      it "updates cached value when expired" do
-        Timecop.freeze(time_in_future) do
+      context "normal original proc action" do
+        it "updates cached value when expired" do
           subject.value_to_return = 20.0
 
           subject.compute_delivery_price("sankt-peterburg", "krasnoyarsk", 0.01).should be == 20
+          $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.1")['expire_on'].should be == time_in_future + 7.days
         end
       end
 
       context "exception risen by original proc" do
-
         it "catches given exceptions and returnes cached value" do
           [CatchedExceptionA, CatchedExceptionB, CatchedExceptionC].each do |ex|
             subject.value_to_return = 20.0
@@ -76,7 +76,7 @@ describe FlexyCache do
           subject.raise_exception = CatchedExceptionA
 
           subject.compute_delivery_price("sankt-peterburg", "krasnoyarsk", 0.01).should be == 10.0
-          $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.1"][:expire_on].should be == time_in_future + 30.minutes
+          $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.1")['expire_on'].should be == time_in_future + 30.minutes
         end
 
         it "does not catch other exceptions" do
@@ -101,7 +101,7 @@ describe FlexyCache do
 
         it "reschedules refresh date" do
           subject.compute_delivery_price("sankt-peterburg", "krasnoyarsk", 0.01)
-          $flexy_storage.values["test_object->sankt-peterburg->krasnoyarsk->0.1"][:expire_on].should be == time_in_future + 30.minutes
+          $flexy_storage.get("test_object->sankt-peterburg->krasnoyarsk->0.1")['expire_on'].should be == time_in_future + 30.minutes
         end
       end
     end

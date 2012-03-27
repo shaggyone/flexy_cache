@@ -6,6 +6,7 @@ gemspec
 
 group :test do
   gem 'rspec'
+  gem 'fakeredis'
 
   gem 'i18n'
   gem 'timecop'
